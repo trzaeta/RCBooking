@@ -73,3 +73,21 @@ td {
 .rc {
   position: relative;
 }
+
+input {
+  font-size: 15px;
+  font-family: "Segoe UI", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  z-index: 9999;
+  border-radius: 5px;
+}
+
+.Confirm {
+  font-family: "Segoe UI", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  z-index: 9999;
+  border-radius: 5px;
+  background-color: #d9f2d0;
+  outline: none;
+  border: none;
+}

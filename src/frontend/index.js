@@ -1,5 +1,28 @@
 options = {
-  rb: {},
+  rb: {
+    fontSize: "20px",
+    textContent: "Please enter the Teacher's name and Date\n",
+    fields: {
+      text: {
+        text: "Teacher's name, as seen on Teams",
+        width: "250px",
+        height: "45px",
+        margin: "10px 10px auto auto",
+      },
+      date: {
+        width: "150px",
+        height: "45px",
+        margin: "10px 10px auto auto",
+      },
+    },
+    buttons: {
+      Confirm: {
+        width: "100px",
+        height: "45px",
+        margin: "10px 10px auto auto",
+      },
+    },
+  },
   socr: {
     fontSize: "42px",
     //TODO: ensure that textContent will be taken from backend, this is just placeholder
@@ -23,13 +46,59 @@ options = {
   },
 };
 
+window.addEventListener("load", function () {
+  select(document.getElementById("rb"));
+});
+
 //TODO: create a load from backend function for socr textContent and pa rows.
+
+function createInput(id, mainWindow) {
+  if (!("fields" in options[id])) {
+    return;
+  }
+  for (const [k, v] of Object.entries(options[id].fields)) {
+    const tF = document.createElement("input");
+    tF.type = k;
+    tF.placeholder = v.text;
+    tF.style.margin = v.margin;
+    tF.style.width = v.width;
+    tF.style.height = v.height;
+    mainWindow.appendChild(tF);
+  }
+}
+
+function createButton(id, mainWindow) {
+  if (!("buttons" in options[id])) {
+    return;
+  }
+  for (const [k, v] of Object.entries(options[id].buttons)) {
+    const button = document.createElement("button");
+    button.textContent = k;
+    button.className = k;
+    button.style.margin = v.margin;
+    button.style.width = v.width;
+    button.style.height = v.height;
+    button.onmouseenter = (event) => {
+      hover(button);
+    };
+    button.onmouseleave = (event) => {
+      button.style.backgroundColor = "#d9f2d0";
+      unhover(button);
+    };
+    button.onmousedown = (event) => {
+      button.style.backgroundColor = "#b4e5a2";
+    };
+    button.onmouseup = (event) => {
+      button.style.backgroundColor = "#d9f2d0";
+    };
+    mainWindow.appendChild(button);
+  }
+}
 
 function createTable(id, mainWindow) {
   if (!("tableContent" in options[id])) {
     return;
   }
-  mainWindow.innerHTML = "";
   const table = document.createElement("table");
   table.style.borderCollapse = "collapse";
   const trHead = document.createElement("tr");
@@ -65,9 +134,10 @@ function setMainScreen(id) {
   element = document.getElementById("mainWindow");
   element.innerHTML = "";
   element.style.fontSize = options[id].fontSize;
-  console.log(element.fontSize);
   element.textContent = options[id].textContent;
   createTable(id, element);
+  createInput(id, element);
+  createButton(id, element);
 }
 
 function select(element) {
