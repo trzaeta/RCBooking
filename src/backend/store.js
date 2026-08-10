@@ -5,7 +5,7 @@ export function makeSeedData() {
   const teacherId = "user-teacher-1";
   return {
     users: [
-      { id: "user-student-1", name: "Student", email: "student@school", role: "student", teacherId },
+      { id: "user-student-1", name: "Student", email: "student@school", role: "student"},
       { id: teacherId, name: "Teacher", email: "teacher@school", role: "teacher" },
       { id: "user-admin-1", name: "Admin", email: "admin@school", role: "admin" },
     ],

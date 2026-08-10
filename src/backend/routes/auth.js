@@ -24,8 +24,8 @@ export function registerAuthRoutes(app, { prefix, store, auth, readJson, sendErr
 
   app.get(`${prefix}/me`, auth.middleware, (c) => {
     const user = c.get("user");
-    const teacher = user.teacherId
-      ? publicUser(store.data.users.find((item) => item.id === user.teacherId))
+    const teacher = teacherId
+      ? publicUser(store.data.users.find((item) => item.id === teacherId))
       : undefined;
     return c.json({ user: publicUser(user), teacher });
   });

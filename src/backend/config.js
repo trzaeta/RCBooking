@@ -11,7 +11,7 @@ export function readBackendConfig(options = {}) {
   const dataFile = options.dataFile || process.env.DATA_FILE || path.join(backendDirectory, "data", "database.json");
   const sessionHours = Number(options.sessionHours || process.env.SESSION_HOURS || 8);
   const allowedOrigins = new Set(
-    (options.allowedOrigins || process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:3000")
+    (options.allowedOrigins || process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5500,http://localhost:5500")
       .split(",")
       .map((origin) => origin.trim())
       .filter(Boolean),

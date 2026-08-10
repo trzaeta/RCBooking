@@ -29,37 +29,75 @@ export function registerBookingRoutes(app, dependencies) {
   });
 
   app.post(`${prefix}/bookings`, auth.middleware, auth.requireRole("student"), async (c) => {
-    const user = c.get("user");
-    const body = await readJson(c);
-    const congressId = String(body.congressId || "");
-    const sessionIds = Array.isArray(body.sessionIds) ? body.sessionIds.map(String) : [];
-    const selectionError = domain.validateBookingSelection(congressId, sessionIds);
-    if (selectionError) return sendError(c, 400, selectionError.code, selectionError.message);
-    if (!user.teacherId) {
-      return sendError(c, 409, "TEACHER_NOT_ASSIGNED", "Ask an administrator to assign you to a teacher.");
-    }
-    const existing = store.data.bookings.find(
-      (booking) =>
-        booking.studentId === user.id &&
-        booking.congressId === congressId &&
-        !["rejected", "cancelled"].includes(booking.status),
+  const user = c.get("user");
+  const body = await readJson(c);
+
+  const teacherId = String(body.teacherId || "");
+  const congressId = String(body.congressId || "");
+  const sessionIds = Array.isArray(body.sessionIds)
+    ? body.sessionIds.map(String)
+    : [];
+
+  const selectionError = domain.validateBookingSelection(congressId, sessionIds);
+  if (selectionError) {
+    return sendError(c, 400, selectionError.code, selectionError.message);
+  }
+
+  const teacher = store.data.users.find(
+    (item) => item.id === teacherId && item.role === "teacher"
+  );
+
+  if (!teacher) {
+    return sendError(
+      c,
+      400,
+      "INVALID_TEACHER",
+      "The selected teacher does not exist."
     );
-    if (existing) {
-      return sendError(c, 409, "BOOKING_ALREADY_EXISTS", "You already have an active booking for this congress.");
-    }
-    const timestamp = now();
-    const booking = {
-      id: crypto.randomUUID(), studentId: user.id, teacherId: user.teacherId, congressId, sessionIds,
-      status: "draft", studentMessage: String(body.studentMessage || "").trim(), teacherComment: "",
-      createdAt: timestamp, updatedAt: timestamp,
-    };
-    store.data.bookings.push(booking);
-    store.save();
-    logAction("booking.created", user, {
-      bookingId: booking.id, congressId: booking.congressId, sessionCount: booking.sessionIds.length,
-    });
-    return c.json({ booking: domain.bookingView(booking) }, 201);
+  }
+
+  const existing = store.data.bookings.find(
+    (booking) =>
+      booking.studentId === user.id &&
+      booking.congressId === congressId &&
+      !["rejected", "cancelled"].includes(booking.status),
+  );
+
+  if (existing) {
+    return sendError(
+      c,
+      409,
+      "BOOKING_ALREADY_EXISTS",
+      "You already have an active booking for this congress."
+    );
+  }
+
+  const timestamp = now();
+
+  const booking = {
+    id: crypto.randomUUID(),
+    studentId: user.id,
+    teacherId,
+    congressId,
+    sessionIds,
+    status: "draft",
+    studentMessage: String(body.studentMessage || "").trim(),
+    teacherComment: "",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  store.data.bookings.push(booking);
+  store.save();
+
+  logAction("booking.created", user, {
+    bookingId: booking.id,
+    congressId: booking.congressId,
+    sessionCount: booking.sessionIds.length,
   });
+
+  return c.json({ booking: domain.bookingView(booking) }, 201);
+});
 
   app.patch(`${prefix}/bookings/:bookingId`, auth.middleware, auth.requireRole("student"), async (c) => {
     const user = c.get("user");
