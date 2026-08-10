@@ -91,3 +91,12 @@ input {
   outline: none;
   border: none;
 }
+
+#teacherSelect {
+  position: relative;
+  z-index: 9999;
+  pointer-events: auto;
+  font-size: 15px;
+  width: 250px;
+  height: 45px;
+}
