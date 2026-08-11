@@ -22,11 +22,37 @@ button.option {
 }
 
 .version {
-  margin-right: 150px;
-  float: right;
+  position: absolute;
+  top: 0;
+  right: 150px;
+  margin: 0;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   font-size: 16px;
   font-style: italic;
+}
+
+.accountSwitcher {
+  position: absolute;
+  top: 38px;
+  right: 150px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#roleSelect {
+  min-width: 110px;
+  padding: 7px 10px;
+  border: 1px solid #444444;
+  border-radius: 5px;
+  background-color: white;
+  font: inherit;
+}
+
+#currentUserName {
+  min-width: 155px;
+  font-size: 14px;
 }
 
 #rb {
@@ -56,6 +82,56 @@ td {
   border-radius: 50px;
   text-align: center;
   outline: 2px solid black;
+}
+
+.mainWindow.teacherReview,
+.mainWindow.studentBookings {
+  padding: 28px;
+  overflow-y: auto;
+  text-align: left;
+  white-space: normal;
+}
+
+.bookingList {
+  display: grid;
+  gap: 12px;
+}
+
+.bookingCard {
+  padding: 14px 16px;
+  border: 1px solid #315b27;
+  border-radius: 10px;
+  background-color: #f7fff4;
+}
+
+.bookingCard h3 {
+  margin: 0 0 8px;
+  font-size: 19px;
+}
+
+.bookingCard p {
+  margin: 5px 0;
+}
+
+.bookingStatus {
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.approveBooking {
+  margin-top: 10px;
+  padding: 9px 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: #2f7d32;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+.approveBooking:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .bg {

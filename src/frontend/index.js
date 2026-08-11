@@ -1,26 +1,40 @@
 let currentUser = null;
 let authToken = null;
 let congresses = [];
+let loginRequestId = 0;
 
 console.log("INDEX.JS IS RUNNING");
 
-async function initialiseBackend() {
+async function initialiseBackend(role = "student") {
+  const requestId = ++loginRequestId;
+  const roleSelect = document.getElementById("roleSelect");
+  const currentUserName = document.getElementById("currentUserName");
+
+  roleSelect.disabled = true;
+  currentUserName.textContent = `Signing in as ${role}...`;
+
   try {
-    const loginResult = await login("student");
+    const loginResult = await login(role);
+    const congressResult = await getCongresses(loginResult.token);
+
+    if (requestId !== loginRequestId) return;
 
     authToken = loginResult.token;
     currentUser = loginResult.user;
-
-    console.log("Logged in:", currentUser);
-
-    const congressResult = await getCongresses(authToken);
-
     congresses = congressResult.congresses;
+    currentUserName.textContent = `${currentUser.name} (${currentUser.role})`;
+    updateNavigationForRole();
 
     console.log("Congresses:", congresses);
     console.log("Sessions:", congresses[0]?.sessions);
+    console.log("Logged in:", currentUser);
+
+    select(document.getElementById("rb"));
   } catch (error) {
     console.error("BACKEND ERROR:", error);
+    currentUserName.textContent = "Login failed";
+  } finally {
+    if (requestId === loginRequestId) roleSelect.disabled = false;
   }
 }
 
@@ -44,36 +58,29 @@ options = {
       margin: "10px 10px auto auto",
     },
   },
-},
+  },
   socr: {
-    fontSize: "42px",
-    //TODO: ensure that textContent will be taken from backend, this is just placeholder
-    textContent:
-      "Title: Example\nDate submitted: 8 Aug '26, 16:55\nCurrent status: Pending",
+    fontSize: "20px",
+    textContent: "Status of current request",
   },
   pa: {
     fontSize: "20px",
-    textContent: "",
-    tableContent: {
-      margin: "-45px auto  auto auto",
-      rowCount: 5,
-      heads: ["Request title", "Date", "Status"],
-      //TODO: ensure that rows have proper content loaded from backend
-      rows: [
-        ["Example", "8 Aug '26, 16:55", "Pending"],
-        ["Example 2", "5 May '25, 23:59", "Approved"],
-        ["Example 3", "6 Jul '24, 06:07", "Rejected"],
-      ],
-    },
+    textContent: "Past applications",
   },
 };
 
 window.addEventListener("load", async function () {
-  await initialiseBackend();
-  select(document.getElementById("rb"));
+  const roleSelect = document.getElementById("roleSelect");
+  roleSelect.addEventListener("change", () => initialiseBackend(roleSelect.value));
+  await initialiseBackend(roleSelect.value);
 });
 
-//TODO: create a load from backend function for socr textContent and pa rows.
+function updateNavigationForRole() {
+  const teacherMode = currentUser?.role === "teacher";
+  document.getElementById("rb").textContent = teacherMode ? "Booking requests" : "Request Booking";
+  document.getElementById("socr").hidden = teacherMode;
+  document.getElementById("pa").hidden = teacherMode;
+}
 
 function createInput(id, mainWindow) {
   if (!("fields" in options[id])) {
@@ -219,11 +226,29 @@ function setMainScreen(id) {
   const element = document.getElementById("mainWindow");
   element.innerHTML = "";
   element.style.fontSize = options[id].fontSize;
+  element.classList.toggle("teacherReview", id === "rb" && currentUser?.role === "teacher");
+  element.classList.toggle("studentBookings", currentUser?.role === "student" && ["socr", "pa"].includes(id));
 
   const headerText = document.createElement("div");
   headerText.textContent = options[id].textContent;
   headerText.style.marginBottom = "15px";
   element.appendChild(headerText);
+
+  if (id === "rb" && currentUser?.role === "teacher") {
+    headerText.textContent = "Student booking requests";
+    renderTeacherBookings(element);
+    return;
+  }
+
+  if (id === "socr" && currentUser?.role === "student") {
+    renderStudentBookings(element, true);
+    return;
+  }
+
+  if (id === "pa" && currentUser?.role === "student") {
+    renderStudentBookings(element, false);
+    return;
+  }
 
   createTable(id, element);
 
@@ -250,6 +275,166 @@ function hover(element) {
 
 function unhover(element) {
   element.style.outline = "none";
+}
+
+function formatBookingTime(session) {
+  const start = new Date(session.startsAt);
+  const end = new Date(session.endsAt);
+  const date = start.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+  const startTime = start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const endTime = end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${session.title} - ${date}, ${startTime} - ${endTime}`;
+}
+
+function formatBookingDate(value) {
+  if (!value) return "Not submitted";
+  return new Date(value).toLocaleString([], {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+  });
+}
+
+function createStudentBookingCard(booking) {
+  const card = document.createElement("article");
+  card.className = "bookingCard";
+
+  const title = document.createElement("h3");
+  title.textContent = booking.congressTitle;
+
+  const status = document.createElement("p");
+  status.className = "bookingStatus";
+  status.textContent = `Status: ${booking.status.replaceAll("_", " ")}`;
+
+  const submitted = document.createElement("p");
+  submitted.textContent = booking.submittedAt
+    ? `Submitted: ${formatBookingDate(booking.submittedAt)}`
+    : `Created: ${formatBookingDate(booking.createdAt)} (not submitted)`;
+
+  const teacher = document.createElement("p");
+  teacher.textContent = `Teacher: ${booking.teacher.name}`;
+
+  const sessions = document.createElement("p");
+  sessions.textContent = booking.sessions.map(formatBookingTime).join("\n");
+  sessions.style.whiteSpace = "pre-line";
+
+  card.append(title, status, submitted, teacher, sessions);
+
+  if (booking.teacherComment) {
+    const comment = document.createElement("p");
+    comment.textContent = `Teacher comment: ${booking.teacherComment}`;
+    card.appendChild(comment);
+  }
+
+  return card;
+}
+
+async function renderStudentBookings(mainWindow, currentOnly) {
+  const loading = document.createElement("p");
+  loading.textContent = "Loading bookings...";
+  mainWindow.appendChild(loading);
+  const token = authToken;
+
+  try {
+    const result = await getBookings(token);
+    if (token !== authToken || currentUser?.role !== "student") return;
+
+    loading.remove();
+    const activeStatuses = new Set(["draft", "submitted", "changes_requested", "approved"]);
+    const bookings = currentOnly
+      ? result.bookings.filter((booking) => activeStatuses.has(booking.status)).slice(0, 1)
+      : result.bookings;
+
+    if (!bookings.length) {
+      const empty = document.createElement("p");
+      empty.textContent = currentOnly
+        ? "You do not have a current booking request."
+        : "You have not made any booking applications yet.";
+      mainWindow.appendChild(empty);
+      return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "bookingList";
+    bookings.forEach((booking) => list.appendChild(createStudentBookingCard(booking)));
+    mainWindow.appendChild(list);
+  } catch (error) {
+    loading.textContent = error.message;
+    console.error("Failed to load student bookings:", error);
+  }
+}
+
+async function renderTeacherBookings(mainWindow) {
+  const loading = document.createElement("p");
+  loading.textContent = "Loading bookings...";
+  mainWindow.appendChild(loading);
+  const token = authToken;
+
+  try {
+    const result = await getBookings(token);
+    if (token !== authToken || currentUser?.role !== "teacher") return;
+
+    loading.remove();
+    if (!result.bookings.length) {
+      const empty = document.createElement("p");
+      empty.textContent = "There are no bookings assigned to you yet.";
+      mainWindow.appendChild(empty);
+      return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "bookingList";
+
+    result.bookings.forEach((booking) => {
+      const card = document.createElement("article");
+      card.className = "bookingCard";
+
+      const title = document.createElement("h3");
+      title.textContent = `${booking.student.name} - ${booking.congressTitle}`;
+
+      const sessions = document.createElement("p");
+      sessions.textContent = booking.sessions.map(formatBookingTime).join("\n");
+      sessions.style.whiteSpace = "pre-line";
+
+      const status = document.createElement("p");
+      status.className = "bookingStatus";
+      status.textContent = `Status: ${booking.status.replace("_", " ")}`;
+
+      card.append(title, sessions, status);
+
+      if (booking.studentMessage) {
+        const message = document.createElement("p");
+        message.textContent = `Student message: ${booking.studentMessage}`;
+        card.appendChild(message);
+      }
+
+      if (booking.status === "submitted") {
+        const approveButton = document.createElement("button");
+        approveButton.className = "approveBooking";
+        approveButton.textContent = "Yes, approve";
+        approveButton.onclick = async () => {
+          approveButton.disabled = true;
+          approveButton.textContent = "Approving...";
+          try {
+            const reviewed = await reviewBooking(authToken, booking.id, "approve");
+            status.textContent = `Status: ${reviewed.booking.status}`;
+            approveButton.textContent = "Approved";
+            console.log("Booking approved:", reviewed.booking);
+          } catch (error) {
+            approveButton.disabled = false;
+            approveButton.textContent = "Yes, approve";
+            alert(error.message);
+          }
+        };
+        card.appendChild(approveButton);
+      }
+
+      list.appendChild(card);
+    });
+
+    mainWindow.appendChild(list);
+  } catch (error) {
+    loading.textContent = error.message;
+    console.error("Failed to load teacher bookings:", error);
+  }
 }
 
 async function createTeacherSelect(mainWindow) {
@@ -311,6 +496,21 @@ mainWindow.appendChild(sessionContainer);
 const congress = congresses[0];
 const dateInput = mainWindow.querySelector('input[type="date"]');
 
+function sessionDateValue(session) {
+  const date = new Date(session.startsAt);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const availableDates = [...new Set((congress?.sessions || []).map(sessionDateValue))].sort();
+if (dateInput && availableDates.length) {
+  dateInput.min = availableDates[0];
+  dateInput.max = availableDates[availableDates.length - 1];
+  dateInput.value = availableDates[0];
+}
+
 function updateSessions() {
   sessionSelect.innerHTML = "";
 
@@ -321,22 +521,21 @@ function updateSessions() {
   defaultSession.selected = true;
   sessionSelect.appendChild(defaultSession);
 
-  if (!dateInput.value || !congress || !congress.sessions) {
+  if (!dateInput?.value || !congress?.sessions?.length) {
+    defaultSession.textContent = "No sessions available";
     return;
   }
 
+  let matchingSessions = 0;
   congress.sessions.forEach((session) => {
     const start = new Date(session.startsAt);
-
-    const year = start.getFullYear();
-    const month = String(start.getMonth() + 1).padStart(2, "0");
-    const day = String(start.getDate()).padStart(2, "0");
-
-    const sessionDate = `${year}-${month}-${day}`;
+    const sessionDate = sessionDateValue(session);
 
     if (sessionDate !== dateInput.value) {
       return;
     }
+
+    matchingSessions += 1;
 
     const option = document.createElement("option");
 
@@ -360,9 +559,14 @@ function updateSessions() {
 
     sessionSelect.appendChild(option);
   });
+
+  if (!matchingSessions) {
+    defaultSession.textContent = "No sessions available on this date";
+  }
 }
 
 dateInput.addEventListener("change", updateSessions);
+updateSessions();
   console.log("Teacher dropdown created");
 
   try {

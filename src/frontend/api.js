@@ -151,3 +151,21 @@ async function cancelBooking(token, bookingId) {
 
   return await response.json();
 }
+
+async function reviewBooking(token, bookingId, action, teacherComment = "") {
+  const response = await fetch(`${API}/bookings/${bookingId}/review`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ action, teacherComment })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || "Failed to review booking");
+  }
+
+  return await response.json();
+}
