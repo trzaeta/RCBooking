@@ -20,12 +20,16 @@ export function createAuth({ store, sessionHours, sendError }) {
     return store.data.users.find((user) => user.id === session.userId) || null;
   }
 
+  function revokeSessionsForUser(userId) {
+    for (const [token, session] of sessions) {
+      if (session.userId === userId) sessions.delete(token);
+    }
+  }
+
   async function middleware(c, next) {
     const header = c.req.header("Authorization") || "";
     const [scheme, token] = header.split(" ");
-    if (scheme !== "Bearer" || !token) {
-      return sendError(c, 401, "AUTH_REQUIRED", "A Bearer token is required.");
-    }
+    if (scheme !== "Bearer" || !token) return sendError(c, 401, "AUTH_REQUIRED", "A Bearer token is required.");
     const user = userForToken(token);
     if (!user) return sendError(c, 401, "INVALID_TOKEN", "The session is invalid or expired.");
     c.set("user", user);
@@ -33,14 +37,17 @@ export function createAuth({ store, sessionHours, sendError }) {
     await next();
   }
 
+  function requireApproved(c, next) {
+    if (c.get("user").role === "pending") return sendError(c, 403, "ACCOUNT_PENDING", "An administrator must approve your account before you can use RCBooking.");
+    return next();
+  }
+
   function requireRole(...roles) {
     return async (c, next) => {
-      if (!roles.includes(c.get("user").role)) {
-        return sendError(c, 403, "FORBIDDEN", "You do not have permission to perform this action. Required role(s): " + roles.join(", "));
-      }
+      if (!roles.includes(c.get("user").role)) return sendError(c, 403, "FORBIDDEN", "You do not have permission to perform this action. Required role(s): " + roles.join(", "));
       await next();
     };
   }
 
-  return { sessions, createSession, userForToken, middleware, requireRole };
+  return { sessions, createSession, userForToken, revokeSessionsForUser, middleware, requireApproved, requireRole };
 }

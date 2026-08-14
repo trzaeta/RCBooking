@@ -2,19 +2,26 @@ let currentUser = null;
 let authToken = null;
 let congresses = [];
 let loginRequestId = 0;
+let microsoftEnabled = false;
 
 console.log("INDEX.JS IS RUNNING");
 
-async function initialiseBackend(role = "student") {
+async function completeLogin(loginPromise, statusText) {
   const requestId = ++loginRequestId;
   const roleSelect = document.getElementById("roleSelect");
+  const microsoftLogin = document.getElementById("microsoftLogin");
   const currentUserName = document.getElementById("currentUserName");
 
   roleSelect.disabled = true;
-  currentUserName.textContent = `Signing in as ${role}...`;
+  microsoftLogin.disabled = true;
+  currentUserName.textContent = statusText;
+  authToken = null;
+  currentUser = null;
+  congresses = [];
+  updateNavigationForRole();
 
   try {
-    const loginResult = await login(role);
+    const loginResult = await loginPromise;
     const congressResult = await getCongresses(loginResult.token);
 
     if (requestId !== loginRequestId) return;
@@ -22,6 +29,7 @@ async function initialiseBackend(role = "student") {
     authToken = loginResult.token;
     currentUser = loginResult.user;
     congresses = congressResult.congresses;
+    if (["student", "teacher"].includes(currentUser.role)) roleSelect.value = currentUser.role;
     currentUserName.textContent = `${currentUser.name} (${currentUser.role})`;
     updateNavigationForRole();
 
@@ -29,13 +37,25 @@ async function initialiseBackend(role = "student") {
     console.log("Sessions:", congresses[0]?.sessions);
     console.log("Logged in:", currentUser);
 
-    select(document.getElementById("rb"));
+    if (["student", "teacher"].includes(currentUser.role)) select(document.getElementById("rb"));
+    else showAccountMessage(currentUser.role === "pending"
+      ? "Your Microsoft account is registered, but an administrator must approve it before you can use RCBooking."
+      : "You are signed in. The admin dashboard is not implemented on this page yet.");
   } catch (error) {
     console.error("BACKEND ERROR:", error);
     currentUserName.textContent = "Login failed";
   } finally {
     if (requestId === loginRequestId) roleSelect.disabled = false;
+    microsoftLogin.disabled = !microsoftEnabled;
   }
+}
+
+function initialiseBackend(role = "student") {
+  return completeLogin(login(role), `Signing in as ${role}...`);
+}
+
+function initialiseMicrosoft(exchangeCode) {
+  return completeLogin(exchangeMicrosoftSession(exchangeCode), "Completing Microsoft sign-in...");
 }
 
 
@@ -71,15 +91,61 @@ options = {
 
 window.addEventListener("load", async function () {
   const roleSelect = document.getElementById("roleSelect");
+  const microsoftLogin = document.getElementById("microsoftLogin");
+  const currentUserName = document.getElementById("currentUserName");
   roleSelect.addEventListener("change", () => initialiseBackend(roleSelect.value));
-  await initialiseBackend(roleSelect.value);
+  microsoftLogin.addEventListener("click", async () => {
+    microsoftLogin.disabled = true;
+    currentUserName.textContent = "Opening Microsoft sign-in...";
+    try {
+      const result = await startMicrosoftSignIn();
+      window.location.assign(result.authorizationUrl);
+    } catch (error) {
+      currentUserName.textContent = error.message;
+      microsoftLogin.disabled = !microsoftEnabled;
+    }
+  });
+
+  const methodsPromise = getAuthMethods()
+    .then((result) => {
+      microsoftEnabled = Boolean(result.methods?.microsoft?.enabled);
+      microsoftLogin.disabled = !microsoftEnabled;
+      microsoftLogin.title = microsoftEnabled ? "" : "Microsoft sign-in is not configured on the backend.";
+    })
+    .catch((error) => {
+      microsoftLogin.disabled = true;
+      microsoftLogin.title = error.message;
+    });
+
+  const parameters = new URLSearchParams(window.location.search);
+  const microsoftResult = parameters.get("microsoft");
+  const exchangeCode = parameters.get("exchangeCode");
+  if (microsoftResult) window.history.replaceState({}, document.title, window.location.pathname);
+
+  if (microsoftResult === "success" && exchangeCode) await initialiseMicrosoft(exchangeCode);
+  else if (microsoftResult === "error") {
+    currentUserName.textContent = `Microsoft sign-in failed: ${parameters.get("error") || "UNKNOWN_ERROR"}`;
+    showAccountMessage("Microsoft sign-in was not completed. You can try again or use a demo login.");
+    roleSelect.disabled = false;
+  } else await initialiseBackend(roleSelect.value);
+
+  await methodsPromise;
 });
 
 function updateNavigationForRole() {
+  const studentMode = currentUser?.role === "student";
   const teacherMode = currentUser?.role === "teacher";
+  document.getElementById("rb").hidden = !studentMode && !teacherMode;
   document.getElementById("rb").textContent = teacherMode ? "Booking requests" : "Request Booking";
-  document.getElementById("socr").hidden = teacherMode;
-  document.getElementById("pa").hidden = teacherMode;
+  document.getElementById("socr").hidden = !studentMode;
+  document.getElementById("pa").hidden = !studentMode;
+}
+
+function showAccountMessage(message) {
+  updateNavigationForRole();
+  const mainWindow = document.getElementById("mainWindow");
+  mainWindow.className = "mainWindow accountMessage";
+  mainWindow.textContent = message;
 }
 
 function createInput(id, mainWindow) {

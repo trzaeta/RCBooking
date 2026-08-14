@@ -1,4 +1,5 @@
-export type Role = "student" | "teacher" | "admin";
+export type Role = "pending" | "student" | "teacher" | "admin";
+export type ApprovedRole = Exclude<Role, "pending">;
 
 export type BookingStatus =
   | "draft"
@@ -12,11 +13,40 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  schoolEmail?: string;
+  requestedRole?: "student" | "teacher";
   role: Role;
+  teacherId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LoginRequest {
+  role: ApprovedRole;
+}
+
+export interface AuthMethodsResponse {
+  methods: { microsoft: { enabled: boolean } };
+  accountApproval: { requiredForPersonalAccounts: true; schoolEmailDomain: string };
+  administrator: { email: string; label: string };
+}
+
+export interface MicrosoftStartResponse {
+  authorizationUrl: string;
+}
+
+export interface MicrosoftSessionRequest {
+  exchangeCode: string;
+}
+
+export interface SchoolProfileRequest {
+  schoolEmail: string;
+  requestedRole: "student" | "teacher";
+}
+
+export interface UpdateUserRoleRequest {
   role: Role;
+  teacherId?: string;
 }
 
 export interface LoginResponse {

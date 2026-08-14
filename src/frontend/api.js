@@ -1,5 +1,36 @@
 const API = "http://localhost:3001/api/v1";
 
+async function responseError(response, fallback) {
+  try {
+    const body = await response.json();
+    return new Error(body.error?.message || fallback);
+  } catch {
+    return new Error(fallback);
+  }
+}
+
+async function getAuthMethods() {
+  const response = await fetch(`${API}/auth/methods`);
+  if (!response.ok) throw await responseError(response, "Failed to load sign-in methods");
+  return await response.json();
+}
+
+async function startMicrosoftSignIn() {
+  const response = await fetch(`${API}/auth/microsoft/start`, { method: "POST" });
+  if (!response.ok) throw await responseError(response, "Microsoft sign-in could not start");
+  return await response.json();
+}
+
+async function exchangeMicrosoftSession(exchangeCode) {
+  const response = await fetch(`${API}/auth/microsoft/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ exchangeCode })
+  });
+  if (!response.ok) throw await responseError(response, "Microsoft sign-in could not be completed");
+  return await response.json();
+}
+
 async function login(role) {
   const response = await fetch(`${API}/auth/login`, {
     method: "POST",

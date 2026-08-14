@@ -3,14 +3,15 @@
   <head>
     <title>Research Congress Booking</title>
     <link rel="stylesheet" href="index.css" />
-    <script src="api.js?v=20260811-teacher-review" defer></script>
-    <script src="index.js?v=20260811-student-history" defer></script>
+    <script src="api.js?v=20260814-microsoft-auth" defer></script>
+    <script src="index.js?v=20260814-microsoft-auth" defer></script>
   </head>
   <body>
     <div class="header">
       <p class="version">Version 0.1</p>
       <div class="accountSwitcher">
-        <label for="roleSelect">Login as</label>
+        <button id="microsoftLogin" type="button" disabled>Sign in with Microsoft</button>
+        <label for="roleSelect">Demo login as</label>
         <select id="roleSelect" aria-label="Login role">
           <option value="student" selected>Student</option>
           <option value="teacher">Teacher</option>

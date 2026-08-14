@@ -11,6 +11,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === currentFile) {
       const port = typeof address === "object" ? address.port : process.env.PORT || 3001;
       console.log(`RCBooking Hono backend: http://localhost:${port}${API_PREFIX}`);
       console.log(`WebSocket: ws://localhost:${port}/ws`);
+      console.log(`Microsoft sign-in: ${backend.microsoftAuth.configured ? "configured" : "not configured"}`);
     }).catch((error) => {
       console.error("Unable to start backend:", error);
       process.exitCode = 1;

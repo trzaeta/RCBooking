@@ -17,9 +17,7 @@ export function createRealtime({ store, userForToken, approvedCount }) {
 
   function broadcastWhere(predicate, event, data) {
     for (const client of wss.clients) {
-      if (client.user && client.readyState === WebSocket.OPEN && predicate(client.user)) {
-        sendSocket(client, event, data);
-      }
+      if (client.user && client.readyState === WebSocket.OPEN && predicate(client.user)) sendSocket(client, event, data);
     }
   }
 
@@ -51,9 +49,7 @@ export function createRealtime({ store, userForToken, approvedCount }) {
         const ws = socket.raw;
         ws.isAlive = true;
         ws.on("pong", () => { ws.isAlive = true; });
-        authTimer = setTimeout(() => {
-          if (!ws.user) ws.close(4401, "Authentication required");
-        }, 5000);
+        authTimer = setTimeout(() => { if (!ws.user) ws.close(4401, "Authentication required"); }, 5000);
       },
 
       onMessage(event, socket) {
@@ -79,6 +75,11 @@ export function createRealtime({ store, userForToken, approvedCount }) {
             ws.close(4401, "Invalid token");
             return;
           }
+          if (user.role === "pending") {
+            sendSocket(ws, "socket.error", { code: "ACCOUNT_PENDING", message: "An administrator must approve your account before you can use realtime updates." });
+            ws.close(4403, "Account approval required");
+            return;
+          }
           ws.user = user;
           ws.token = message.data.token;
           clearTimeout(authTimer);
@@ -90,13 +91,9 @@ export function createRealtime({ store, userForToken, approvedCount }) {
         else sendSocket(ws, "socket.error", { code: "UNKNOWN_EVENT", message: `Unknown event: ${message.event}` });
       },
 
-      onClose() {
-        clearTimeout(authTimer);
-      },
+      onClose() { clearTimeout(authTimer); },
 
-      onError(error) {
-        console.error("WebSocket error:", error);
-      },
+      onError(error) { console.error("WebSocket error:", error); },
     };
   });
 

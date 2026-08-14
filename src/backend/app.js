@@ -5,6 +5,7 @@ import { API_PREFIX, readBackendConfig } from "./config.js";
 import { createDomain } from "./domain.js";
 import { ApiError, readJson, sendError } from "./errors.js";
 import { createActionLog } from "./logger.js";
+import { createMicrosoftAuth } from "./microsoft-auth.js";
 import { createRealtime } from "./realtime.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBookingRoutes } from "./routes/bookings.js";
@@ -13,24 +14,22 @@ import { JsonStore } from "./store.js";
 import { now } from "./utils.js";
 
 export function createBackend(options = {}) {
-  const { dataFile, sessionHours, allowedOrigins } = readBackendConfig(options);
+  const config = readBackendConfig(options);
+  const { dataFile, sessionHours, allowedOrigins, microsoft, adminContactEmail, bootstrapAdminEmail, schoolEmailDomain } = config;
   const store = new JsonStore(dataFile);
   const app = new Hono();
   const logAction = createActionLog(options.actionLogger || ((message) => console.log(message)));
   const auth = createAuth({ store, sessionHours, sendError });
+  const microsoftAuth = createMicrosoftAuth({ config: microsoft, client: options.microsoftClient });
   const domain = createDomain(store);
   const realtime = createRealtime({ store, userForToken: auth.userForToken, approvedCount: domain.approvedCount });
   let serverInstance;
 
-  function isOriginAllowed(origin) {
-    return !origin || allowedOrigins.has("*") || allowedOrigins.has(origin);
-  }
+  function isOriginAllowed(origin) { return !origin || allowedOrigins.has("*") || allowedOrigins.has(origin); }
 
   app.use("*", async (c, next) => {
     const origin = c.req.header("Origin");
-    if (!isOriginAllowed(origin)) {
-      return sendError(c, 403, "ORIGIN_NOT_ALLOWED", "This frontend origin is not allowed.");
-    }
+    if (!isOriginAllowed(origin)) return sendError(c, 403, "ORIGIN_NOT_ALLOWED", "This frontend origin is not allowed.");
     if (origin) c.header("Access-Control-Allow-Origin", origin);
     c.header("Vary", "Origin");
     c.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
@@ -39,11 +38,9 @@ export function createBackend(options = {}) {
     await next();
   });
 
-  app.get(`${API_PREFIX}/health`, (c) => {
-    return c.json({ status: "alive", service: "rcbooking-backend", framework: "hono", timestamp: now() });
-  });
+  app.get(`${API_PREFIX}/health`, (c) => c.json({ status: "alive", service: "rcbooking-backend", framework: "hono", timestamp: now() }));
 
-  const routeDependencies = { prefix: API_PREFIX, store, auth, domain, realtime, readJson, sendError, logAction };
+  const routeDependencies = { prefix: API_PREFIX, store, auth, domain, realtime, microsoftAuth, adminContactEmail, bootstrapAdminEmail, schoolEmailDomain, readJson, sendError, logAction };
   registerAuthRoutes(app, routeDependencies);
   registerCongressRoutes(app, routeDependencies);
   registerBookingRoutes(app, routeDependencies);
@@ -78,7 +75,7 @@ export function createBackend(options = {}) {
   }
 
   return {
-    app, wss: realtime.wss, store, start, stop,
+    app, wss: realtime.wss, store, auth, microsoftAuth, config, start, stop,
     get server() {
       return serverInstance;
     },
