@@ -3,7 +3,7 @@ import { upgradeWebSocket } from "@hono/node-server";
 import { WebSocket, WebSocketServer } from "ws";
 import { now, publicUser } from "./utils.js";
 
-export function createRealtime({ store, userForToken, approvedCount }) {
+export function createRealtime({ store, authenticateCookieHeader, userForTokenHash, approvedCount }) {
   const wss = new WebSocketServer({ noServer: true });
   let heartbeatTimer;
 
@@ -42,18 +42,32 @@ export function createRealtime({ store, userForToken, approvedCount }) {
     }
   }
 
-  const upgradeMiddleware = upgradeWebSocket(() => {
-    let authTimer;
+  const upgradeMiddleware = upgradeWebSocket((c) => {
+    const authenticated = authenticateCookieHeader(c.req.header("Cookie"));
     return {
       onOpen(_event, socket) {
         const ws = socket.raw;
         ws.isAlive = true;
         ws.on("pong", () => { ws.isAlive = true; });
-        authTimer = setTimeout(() => { if (!ws.user) ws.close(4401, "Authentication required"); }, 5000);
+        if (!authenticated) {
+          ws.close(4401, "Authentication required");
+          return;
+        }
+        if (authenticated.user.role === "pending") {
+          ws.close(4403, "Account approval required");
+          return;
+        }
+        ws.user = authenticated.user;
+        ws.sessionTokenHash = authenticated.tokenHash;
+        sendSocket(ws, "connection.ready", { user: publicUser(ws.user) });
       },
 
       onMessage(event, socket) {
         const ws = socket.raw;
+        if (!ws.user) {
+          ws.close(4401, "Authentication required");
+          return;
+        }
         let message;
         try {
           const value = typeof event.data === "string" ? event.data : Buffer.from(event.data).toString("utf8");
@@ -64,34 +78,9 @@ export function createRealtime({ store, userForToken, approvedCount }) {
           return;
         }
 
-        if (!ws.user) {
-          if (message.event !== "auth" || !message.data?.token) {
-            sendSocket(ws, "socket.error", { code: "AUTH_REQUIRED", message: "Send the auth event first." });
-            return;
-          }
-          const user = userForToken(message.data.token);
-          if (!user) {
-            sendSocket(ws, "socket.error", { code: "INVALID_TOKEN", message: "The session is invalid or expired." });
-            ws.close(4401, "Invalid token");
-            return;
-          }
-          if (user.role === "pending") {
-            sendSocket(ws, "socket.error", { code: "ACCOUNT_PENDING", message: "An administrator must approve your account before you can use realtime updates." });
-            ws.close(4403, "Account approval required");
-            return;
-          }
-          ws.user = user;
-          ws.token = message.data.token;
-          clearTimeout(authTimer);
-          sendSocket(ws, "connection.ready", { user: publicUser(user) });
-          return;
-        }
-
         if (message.event === "ping") sendSocket(ws, "pong", { timestamp: now() });
         else sendSocket(ws, "socket.error", { code: "UNKNOWN_EVENT", message: `Unknown event: ${message.event}` });
       },
-
-      onClose() { clearTimeout(authTimer); },
 
       onError(error) { console.error("WebSocket error:", error); },
     };
@@ -100,7 +89,7 @@ export function createRealtime({ store, userForToken, approvedCount }) {
   function startHeartbeat() {
     heartbeatTimer = setInterval(() => {
       for (const client of wss.clients) {
-        if (client.user && !userForToken(client.token)) {
+        if (client.user && !userForTokenHash(client.sessionTokenHash)) {
           client.close(4401, "Session expired");
           continue;
         }

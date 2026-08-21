@@ -1,62 +1,13 @@
 let currentUser = null;
-let authToken = null;
 let congresses = [];
-let loginRequestId = 0;
-let microsoftEnabled = false;
 
-console.log("INDEX.JS IS RUNNING");
-
-async function completeLogin(loginPromise, statusText) {
-  const requestId = ++loginRequestId;
-  const roleSelect = document.getElementById("roleSelect");
-  const microsoftLogin = document.getElementById("microsoftLogin");
-  const currentUserName = document.getElementById("currentUserName");
-
-  roleSelect.disabled = true;
-  microsoftLogin.disabled = true;
-  currentUserName.textContent = statusText;
-  authToken = null;
-  currentUser = null;
-  congresses = [];
-  updateNavigationForRole();
-
-  try {
-    const loginResult = await loginPromise;
-    const congressResult = await getCongresses(loginResult.token);
-
-    if (requestId !== loginRequestId) return;
-
-    authToken = loginResult.token;
-    currentUser = loginResult.user;
-    congresses = congressResult.congresses;
-    if (["student", "teacher"].includes(currentUser.role)) roleSelect.value = currentUser.role;
-    currentUserName.textContent = `${currentUser.name} (${currentUser.role})`;
-    updateNavigationForRole();
-
-    console.log("Congresses:", congresses);
-    console.log("Sessions:", congresses[0]?.sessions);
-    console.log("Logged in:", currentUser);
-
-    if (["student", "teacher"].includes(currentUser.role)) select(document.getElementById("rb"));
-    else showAccountMessage(currentUser.role === "pending"
-      ? "Your Microsoft account is registered, but an administrator must approve it before you can use RCBooking."
-      : "You are signed in. The admin dashboard is not implemented on this page yet.");
-  } catch (error) {
-    console.error("BACKEND ERROR:", error);
-    currentUserName.textContent = "Login failed";
-  } finally {
-    if (requestId === loginRequestId) roleSelect.disabled = false;
-    microsoftLogin.disabled = !microsoftEnabled;
-  }
+function loginPageUrl(reason) {
+  const url = new URL("login.html", window.location.href);
+  if (reason) url.searchParams.set("reason", reason);
+  return url.toString();
 }
 
-function initialiseBackend(role = "student") {
-  return completeLogin(login(role), `Signing in as ${role}...`);
-}
-
-function initialiseMicrosoft(exchangeCode) {
-  return completeLogin(exchangeMicrosoftSession(exchangeCode), "Completing Microsoft sign-in...");
-}
+function redirectToLogin(reason) { window.location.replace(loginPageUrl(reason)); }
 
 
 
@@ -89,47 +40,38 @@ options = {
   },
 };
 
-window.addEventListener("load", async function () {
-  const roleSelect = document.getElementById("roleSelect");
-  const microsoftLogin = document.getElementById("microsoftLogin");
-  const currentUserName = document.getElementById("currentUserName");
-  roleSelect.addEventListener("change", () => initialiseBackend(roleSelect.value));
-  microsoftLogin.addEventListener("click", async () => {
-    microsoftLogin.disabled = true;
-    currentUserName.textContent = "Opening Microsoft sign-in...";
+window.addEventListener("load", async () => {
+  document.getElementById("logoutButton").addEventListener("click", async () => {
+    const logoutButton = document.getElementById("logoutButton");
+    logoutButton.disabled = true;
     try {
-      const result = await startMicrosoftSignIn();
-      window.location.assign(result.authorizationUrl);
+      await logout();
+      redirectToLogin("logged_out");
     } catch (error) {
-      currentUserName.textContent = error.message;
-      microsoftLogin.disabled = !microsoftEnabled;
+      showAccountMessage(error.message);
+      logoutButton.disabled = false;
     }
   });
 
-  const methodsPromise = getAuthMethods()
-    .then((result) => {
-      microsoftEnabled = Boolean(result.methods?.microsoft?.enabled);
-      microsoftLogin.disabled = !microsoftEnabled;
-      microsoftLogin.title = microsoftEnabled ? "" : "Microsoft sign-in is not configured on the backend.";
-    })
-    .catch((error) => {
-      microsoftLogin.disabled = true;
-      microsoftLogin.title = error.message;
-    });
+  try {
+    currentUser = (await getMe()).user;
+    if (currentUser.role !== "pending") congresses = (await getCongresses()).congresses;
+    document.getElementById("currentUserName").textContent = `${currentUser.name} (${currentUser.role})`;
+    updateNavigationForRole();
+    document.body.hidden = false;
 
-  const parameters = new URLSearchParams(window.location.search);
-  const microsoftResult = parameters.get("microsoft");
-  const exchangeCode = parameters.get("exchangeCode");
-  if (microsoftResult) window.history.replaceState({}, document.title, window.location.pathname);
-
-  if (microsoftResult === "success" && exchangeCode) await initialiseMicrosoft(exchangeCode);
-  else if (microsoftResult === "error") {
-    currentUserName.textContent = `Microsoft sign-in failed: ${parameters.get("error") || "UNKNOWN_ERROR"}`;
-    showAccountMessage("Microsoft sign-in was not completed. You can try again or use a demo login.");
-    roleSelect.disabled = false;
-  } else await initialiseBackend(roleSelect.value);
-
-  await methodsPromise;
+    if (["student", "teacher"].includes(currentUser.role)) select(document.getElementById("rb"));
+    else showAccountMessage(currentUser.role === "pending"
+      ? "Your Microsoft account is registered, but an administrator must approve it before you can use RCBooking."
+      : "You are signed in as admin, but the admin dashboard is not implemented yet.");
+  } catch (error) {
+    if (error.status === 401) {
+      redirectToLogin("session_required");
+      return;
+    }
+    document.body.hidden = false;
+    showAccountMessage(`The booking system could not be loaded: ${error.message}`);
+  }
 });
 
 function updateNavigationForRole() {
@@ -190,8 +132,6 @@ function createButton(id, mainWindow) {
 
     if (id === "rb" && k === "Confirm") {
   button.onclick = async () => {
-    console.log("CONFIRM BUTTON CLICKED");
-
     const teacherSelect = mainWindow.querySelector("#teacherSelect");
     const dateInput = mainWindow.querySelector('input[type="date"]');
     const sessionSelect = mainWindow.querySelector("#sessionSelect");
@@ -211,9 +151,6 @@ function createButton(id, mainWindow) {
       return;
     }
 
-    console.log("Selected teacher:", teacherSelect.value);
-    console.log("Selected date:", dateInput.value);
-    console.log("Selected session:", sessionSelect.value);
 
     try {
       const congress = congresses[0];
@@ -223,23 +160,18 @@ function createButton(id, mainWindow) {
       }
 
       const result = await createBooking(
-  authToken,
   teacherSelect.value,
   congress.id,
   [sessionSelect.value],
   ""
 );
 
-console.log("Booking created:", result);
 
 const bookingId = result.booking.id;
 
 const submitted = await submitBooking(
-  authToken,
   bookingId
 );
-
-console.log("Booking submitted:", submitted);
 
 alert("Booking submitted successfully.");
     } catch (error) {
@@ -397,11 +329,11 @@ async function renderStudentBookings(mainWindow, currentOnly) {
   const loading = document.createElement("p");
   loading.textContent = "Loading bookings...";
   mainWindow.appendChild(loading);
-  const token = authToken;
+  const userId = currentUser?.id;
 
   try {
-    const result = await getBookings(token);
-    if (token !== authToken || currentUser?.role !== "student") return;
+    const result = await getBookings();
+    if (userId !== currentUser?.id || currentUser?.role !== "student") return;
 
     loading.remove();
     const activeStatuses = new Set(["draft", "submitted", "changes_requested", "approved"]);
@@ -432,11 +364,11 @@ async function renderTeacherBookings(mainWindow) {
   const loading = document.createElement("p");
   loading.textContent = "Loading bookings...";
   mainWindow.appendChild(loading);
-  const token = authToken;
+  const userId = currentUser?.id;
 
   try {
-    const result = await getBookings(token);
-    if (token !== authToken || currentUser?.role !== "teacher") return;
+    const result = await getBookings();
+    if (userId !== currentUser?.id || currentUser?.role !== "teacher") return;
 
     loading.remove();
     if (!result.bookings.length) {
@@ -480,10 +412,9 @@ async function renderTeacherBookings(mainWindow) {
           approveButton.disabled = true;
           approveButton.textContent = "Approving...";
           try {
-            const reviewed = await reviewBooking(authToken, booking.id, "approve");
+            const reviewed = await reviewBooking(booking.id, "approve");
             status.textContent = `Status: ${reviewed.booking.status}`;
             approveButton.textContent = "Approved";
-            console.log("Booking approved:", reviewed.booking);
           } catch (error) {
             approveButton.disabled = false;
             approveButton.textContent = "Yes, approve";
@@ -633,12 +564,8 @@ function updateSessions() {
 
 dateInput.addEventListener("change", updateSessions);
 updateSessions();
-  console.log("Teacher dropdown created");
-
   try {
-    const result = await getTeachers(authToken);
-
-    console.log("Teachers received:", result);
+    const result = await getTeachers();
 
     teacherSelect.innerHTML = "";
 
@@ -658,11 +585,6 @@ updateSessions();
 
       teacherSelect.appendChild(option);
     });
-
-    console.log(
-      "Teacher options created:",
-      teacherSelect.options.length
-    );
 
   } catch (error) {
     console.error("Failed to load teachers:", error);

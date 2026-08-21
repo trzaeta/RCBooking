@@ -50,7 +50,6 @@ export interface UpdateUserRoleRequest {
 }
 
 export interface LoginResponse {
-  token: string;
   expiresAt: string;
   user: User;
 }
@@ -101,9 +100,7 @@ export interface BookingView extends Booking {
   sessions: Array<Pick<CongressSession, "id" | "title" | "startsAt" | "endsAt">>;
 }
 
-export type ClientSocketMessage =
-  | { event: "auth"; data: { token: string } }
-  | { event: "ping"; data?: Record<string, never> };
+export type ClientSocketMessage = { event: "ping"; data?: Record<string, never> };
 
 export interface ServerEventMap {
   "connection.ready": { user: User };

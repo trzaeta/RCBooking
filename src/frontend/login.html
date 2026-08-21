@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign in - Research Congress Booking</title>
+    <link rel="stylesheet" href="index.css?v=20260819-separate-login-3" />
+    <script src="api.js?v=20260819-separate-login" defer></script>
+    <script src="login.js?v=20260819-separate-login" defer></script>
+  </head>
+  <body class="loginPage" hidden>
+    <div class="header">
+      <p class="version">v0.2</p>
+      <p class="pageTitle"><strong>Research Congress Booking</strong></p>
+    </div>
+    <div class="loginWorkspace">
+      <nav class="loginNavigation" aria-label="Authentication">
+        <button class="option loginOption" type="button" aria-current="page">Sign in</button>
+      </nav>
+      <div class="loginPanelStack">
+        <div class="loginPanelBackground"></div>
+        <main class="mainWindow loginWindow" aria-labelledby="loginTitle">
+          <h1 id="loginTitle">Sign in</h1>
+          <p>Use your Microsoft account or select a development role.</p>
+          <button id="microsoftLogin" type="button" disabled>Sign in with Microsoft</button>
+          <p class="loginSeparator">or</p>
+          <div class="roleLoginControls">
+            <label for="roleSelect">Role</label>
+            <select id="roleSelect" aria-label="Login role">
+              <option value="student" selected>Student</option>
+              <option value="teacher">Teacher</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button id="roleLogin" type="button">Log in</button>
+          </div>
+          <p id="loginMessage" class="loginMessage" role="status" aria-live="polite"></p>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

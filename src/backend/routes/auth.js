@@ -57,7 +57,7 @@ export function registerAuthRoutes(app, dependencies) {
     if (!["student", "teacher", "admin"].includes(role)) return sendError(c, 400, "INVALID_ROLE", "Role must be student, teacher or admin.", { role: "Choose student, teacher or admin." });
     const user = store.data.users.find((item) => item.role === role);
     if (!user) return sendError(c, 404, "ROLE_NOT_CONFIGURED", `No ${role} demo user is configured.`);
-    const session = auth.createSession(user.id);
+    const session = auth.startSession(c, user.id);
     logAction("auth.login", user, { provider: "demo" });
     return c.json({ ...session, user: publicUser(user) });
   });
@@ -86,14 +86,15 @@ export function registerAuthRoutes(app, dependencies) {
     const userId = microsoftAuth.consumeSessionExchange(exchangeCode);
     const user = store.data.users.find((item) => item.id === userId);
     if (!user) return sendError(c, 401, "ACCOUNT_NOT_FOUND", "The Microsoft account is no longer registered.");
-    const session = auth.createSession(user.id);
+    const session = auth.startSession(c, user.id);
     logAction("auth.login", user, { provider: "microsoft" });
     return c.json({ ...session, user: publicUser(user) });
   });
 
-  app.post(`${prefix}/auth/logout`, auth.middleware, (c) => {
-    logAction("auth.logout", c.get("user"));
-    auth.sessions.delete(c.get("token"));
+  app.post(`${prefix}/auth/logout`, (c) => {
+    const authenticated = auth.authenticateCookieHeader(c.req.header("Cookie"));
+    if (authenticated) logAction("auth.logout", authenticated.user);
+    auth.endSession(c);
     return c.body(null, 204);
   });
 

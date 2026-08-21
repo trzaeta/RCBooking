@@ -20,7 +20,10 @@ function normalizedEmail(value) { return String(value || "").trim().toLowerCase(
 
 export function readBackendConfig(options = {}) {
   const dataFile = options.dataFile || process.env.DATA_FILE || path.join(backendDirectory, "data", "database.json");
-  const sessionHours = positiveNumber(options.sessionHours || process.env.SESSION_HOURS, 8);
+  const sessionHours = positiveNumber(options.sessionHours || process.env.SESSION_HOURS, 24);
+  const sessionCookieName = String(options.sessionCookieName || process.env.SESSION_COOKIE_NAME || "rcbooking_session").trim();
+  const sessionCookieSecure = options.sessionCookieSecure ?? process.env.NODE_ENV === "production";
+  if (!/^[A-Za-z0-9_-]+$/.test(sessionCookieName)) throw new Error("SESSION_COOKIE_NAME may contain only letters, numbers, underscores and hyphens.");
   const allowedOrigins = new Set(
     (options.allowedOrigins || process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5500,http://localhost:5500")
       .split(",")
@@ -45,6 +48,8 @@ export function readBackendConfig(options = {}) {
   return {
     dataFile,
     sessionHours,
+    sessionCookieName,
+    sessionCookieSecure,
     allowedOrigins,
     microsoft,
     adminContactEmail: normalizedEmail(options.adminContactEmail || process.env.ADMIN_CONTACT_EMAIL || "admin@admin.com"),

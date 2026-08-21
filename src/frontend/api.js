@@ -1,202 +1,58 @@
 const API = "http://localhost:3001/api/v1";
 
 async function responseError(response, fallback) {
+  let message = fallback;
   try {
     const body = await response.json();
-    return new Error(body.error?.message || fallback);
-  } catch {
-    return new Error(fallback);
-  }
+    message = body.error?.message || fallback;
+  } catch {}
+  const error = new Error(message);
+  error.status = response.status;
+  return error;
 }
 
-async function getAuthMethods() {
-  const response = await fetch(`${API}/auth/methods`);
-  if (!response.ok) throw await responseError(response, "Failed to load sign-in methods");
-  return await response.json();
+async function apiRequest(path, options = {}, fallback = "Request failed") {
+  const response = await fetch(`${API}${path}`, { ...options, credentials: "include" });
+  if (!response.ok) throw await responseError(response, fallback);
+  return response.status === 204 ? null : await response.json();
 }
 
-async function startMicrosoftSignIn() {
-  const response = await fetch(`${API}/auth/microsoft/start`, { method: "POST" });
-  if (!response.ok) throw await responseError(response, "Microsoft sign-in could not start");
-  return await response.json();
+function jsonOptions(method, body) {
+  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
-async function exchangeMicrosoftSession(exchangeCode) {
-  const response = await fetch(`${API}/auth/microsoft/session`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ exchangeCode })
-  });
-  if (!response.ok) throw await responseError(response, "Microsoft sign-in could not be completed");
-  return await response.json();
+function getAuthMethods() { return apiRequest("/auth/methods", {}, "Failed to load sign-in methods"); }
+
+function startMicrosoftSignIn() { return apiRequest("/auth/microsoft/start", { method: "POST" }, "Microsoft sign-in could not start"); }
+
+function exchangeMicrosoftSession(exchangeCode) {
+  return apiRequest("/auth/microsoft/session", jsonOptions("POST", { exchangeCode }), "Microsoft sign-in could not be completed");
 }
 
-async function login(role) {
-  const response = await fetch(`${API}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ role })
-  });
+function login(role) { return apiRequest("/auth/login", jsonOptions("POST", { role }), "Login failed"); }
 
-  if (!response.ok) {
-    throw new Error("Login failed");
-  }
+function logout() { return apiRequest("/auth/logout", { method: "POST" }, "Logout failed"); }
 
-  return await response.json();
+function getCongresses() { return apiRequest("/congresses", {}, "Failed to load congresses"); }
+
+function getMe() { return apiRequest("/me", {}, "Failed to get current user"); }
+
+function getTeachers() { return apiRequest("/teachers", {}, "Failed to load teachers"); }
+
+function getBookings() { return apiRequest("/bookings", {}, "Failed to load bookings"); }
+
+function createBooking(teacherId, congressId, sessionIds, studentMessage) {
+  return apiRequest("/bookings", jsonOptions("POST", { teacherId, congressId, sessionIds, studentMessage }), "Failed to create booking");
 }
 
-async function getCongresses(token) {
-  const response = await fetch(`${API}/congresses`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load congresses");
-  }
-
-  return await response.json();
+function submitBooking(bookingId) {
+  return apiRequest(`/bookings/${bookingId}/submit`, { method: "POST" }, "Failed to submit booking");
 }
 
-async function getMe(token) {
-  const response = await fetch(`${API}/me`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to get current user");
-  }
-
-  return await response.json();
+function cancelBooking(bookingId) {
+  return apiRequest(`/bookings/${bookingId}/cancel`, { method: "POST" }, "Failed to cancel booking");
 }
 
-async function getTeachers(token) {
-  const response = await fetch(`${API}/teachers`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-
-    throw new Error(
-      error.error?.message || "Failed to load teachers"
-    );
-  }
-
-  return await response.json();
-}
-
-async function getBookings(token) {
-  const response = await fetch(`${API}/bookings`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to load bookings");
-  }
-
-  return await response.json();
-}
-
-async function createBooking(
-  token,
-  teacherId,
-  congressId,
-  sessionIds,
-  studentMessage
-) {
-  const response = await fetch(`${API}/bookings`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      teacherId,
-      congressId,
-      sessionIds,
-      studentMessage
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-
-    throw new Error(
-      error.error?.message || "Failed to create booking"
-    );
-  }
-
-  return await response.json();
-}
-
-async function submitBooking(token, bookingId) {
-  const response = await fetch(
-    `${API}/bookings/${bookingId}/submit`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-
-    throw new Error(
-      error.error?.message || "Failed to submit booking"
-    );
-  }
-
-  return await response.json();
-}
-
-async function cancelBooking(token, bookingId) {
-  const response = await fetch(
-    `${API}/bookings/${bookingId}/cancel`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-
-    throw new Error(
-      error.error?.message || "Failed to cancel booking"
-    );
-  }
-
-  return await response.json();
-}
-
-async function reviewBooking(token, bookingId, action, teacherComment = "") {
-  const response = await fetch(`${API}/bookings/${bookingId}/review`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify({ action, teacherComment })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || "Failed to review booking");
-  }
-
-  return await response.json();
+function reviewBooking(bookingId, action, teacherComment = "") {
+  return apiRequest(`/bookings/${bookingId}/review`, jsonOptions("POST", { action, teacherComment }), "Failed to review booking");
 }

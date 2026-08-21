@@ -1,3 +1,158 @@
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  color: #17331c;
+  background: #f5faf3;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.loginWorkspace {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 800px);
+  align-items: start;
+  gap: 20px;
+  width: min(1150px, calc(100% - 64px));
+  margin: 28px auto 0;
+}
+
+.loginNavigation {
+  padding-top: 62px;
+  position: relative;
+  z-index: 2;
+}
+
+.loginNavigation button.option {
+  width: 100%;
+  margin: 0;
+}
+
+.loginPanelStack {
+  position: relative;
+  min-width: 0;
+}
+
+.loginPanelBackground {
+  position: absolute;
+  inset: 18px -28px -18px -28px;
+  border-radius: 50px;
+  background: #b4e5a2;
+  outline: 2px solid black;
+}
+
+.mainWindow.loginWindow {
+  position: relative;
+  z-index: 1;
+  float: none;
+  width: 100%;
+  height: 375px;
+  margin: 0;
+  padding: 32px 70px;
+  text-align: left;
+  white-space: normal;
+}
+
+.loginWindow h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+}
+
+.loginWindow > p {
+  margin: 8px 0 18px;
+}
+
+#microsoftLogin {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #444444;
+  border-radius: 5px;
+  background: #d9f2d0;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loginSeparator {
+  text-align: center;
+}
+
+.roleLoginControls {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+#roleLogin {
+  min-height: 42px;
+  padding: 0 24px;
+  border: none;
+  border-radius: 5px;
+  background: #d9f2d0;
+  font: inherit;
+  cursor: pointer;
+}
+
+#microsoftLogin:disabled,
+#roleLogin:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.loginMessage {
+  min-height: 20px;
+  margin: 14px 0 0 !important;
+  color: #9a2e2e;
+  font-size: 14px;
+}
+
+.sessionNotice {
+  margin: 8px 0 0 !important;
+  color: #315b27;
+  font-size: 12px;
+}
+
+button.option.loginOption {
+  background: #8ed973;
+  outline: 2px solid black;
+}
+
+@media (max-width: 900px) {
+  p.pageTitle {
+    margin-left: 20px;
+    padding-left: 0;
+    font-size: 40px;
+  }
+
+  .loginWorkspace {
+    grid-template-columns: 1fr;
+    width: min(720px, calc(100% - 40px));
+  }
+
+  .loginNavigation {
+    padding-top: 0;
+  }
+
+  .loginPanelBackground {
+    inset: 12px -10px -12px -10px;
+  }
+
+  .mainWindow.loginWindow {
+    height: auto;
+    min-height: 375px;
+    padding: 30px;
+  }
+}
+
+@media (max-width: 560px) {
+  .roleLoginControls {
+    grid-template-columns: 1fr;
+  }
+}
+
 p.pageTitle {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   font-size: 60px;
@@ -43,20 +198,6 @@ button.option {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-#microsoftLogin {
-  padding: 8px 12px;
-  border: 1px solid #444444;
-  border-radius: 5px;
-  background-color: white;
-  font: inherit;
-  cursor: pointer;
-}
-
-#microsoftLogin:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
 #roleSelect {
   min-width: 110px;
   padding: 7px 10px;
@@ -69,6 +210,15 @@ button.option {
 #currentUserName {
   min-width: 155px;
   font-size: 14px;
+}
+
+#logoutButton {
+  padding: 7px 12px;
+  border: 1px solid #444444;
+  border-radius: 5px;
+  background: #ffffff;
+  font: inherit;
+  cursor: pointer;
 }
 
 .accountMessage {

@@ -1,59 +1,28 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Research Congress Booking</title>
-    <link rel="stylesheet" href="index.css" />
-    <script src="api.js?v=20260814-microsoft-auth" defer></script>
-    <script src="index.js?v=20260814-microsoft-auth" defer></script>
+    <link rel="stylesheet" href="index.css?v=20260819-separate-login-3" />
+    <script src="api.js?v=20260819-separate-login" defer></script>
+    <script src="index.js?v=20260819-separate-login" defer></script>
   </head>
-  <body>
+  <body hidden>
     <div class="header">
-      <p class="version">Version 0.1</p>
+      <p class="version">v0.2</p>
       <div class="accountSwitcher">
-        <button id="microsoftLogin" type="button" disabled>Sign in with Microsoft</button>
-        <label for="roleSelect">Demo login as</label>
-        <select id="roleSelect" aria-label="Login role">
-          <option value="student" selected>Student</option>
-          <option value="teacher">Teacher</option>
-        </select>
-        <span id="currentUserName" role="status" aria-live="polite">Signing in...</span>
+        <span id="currentUserName" role="status" aria-live="polite"></span>
+        <button id="logoutButton" type="button">Log out</button>
       </div>
-      <p class="pageTitle">
-        <strong>Research Congress Booking</strong>
-      </p>
+      <p class="pageTitle"><strong>Research Congress Booking</strong></p>
     </div>
-    <div class="mainWindow" id="mainWindow">
-      If you see this, then something is very, very wrong.
-    </div>
+    <div class="mainWindow" id="mainWindow">Loading...</div>
     <div class="rc">
       <div class="bg"></div>
-      <button
-        id="rb"
-        class="option"
-        onclick="select(this)"
-        onmouseenter="hover(this)"
-        onmouseleave="unhover(this)"
-      >
-        Request Booking</button
-      ><br />
-      <button
-        id="socr"
-        class="option"
-        onclick="select(this)"
-        onmouseenter="hover(this)"
-        onmouseleave="unhover(this)"
-      >
-        Status of current request</button
-      ><br />
-      <button
-        id="pa"
-        class="option"
-        onclick="select(this)"
-        onmouseenter="hover(this)"
-        onmouseleave="unhover(this)"
-      >
-        Past applications</button
-      ><br />
+      <button id="rb" class="option" onclick="select(this)" onmouseenter="hover(this)" onmouseleave="unhover(this)">Request Booking</button><br />
+      <button id="socr" class="option" onclick="select(this)" onmouseenter="hover(this)" onmouseleave="unhover(this)">Status of current request</button><br />
+      <button id="pa" class="option" onclick="select(this)" onmouseenter="hover(this)" onmouseleave="unhover(this)">Past applications</button><br />
     </div>
   </body>
 </html>

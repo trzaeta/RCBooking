@@ -15,14 +15,17 @@ import { now } from "./utils.js";
 
 export function createBackend(options = {}) {
   const config = readBackendConfig(options);
-  const { dataFile, sessionHours, allowedOrigins, microsoft, adminContactEmail, bootstrapAdminEmail, schoolEmailDomain } = config;
+  const {
+    dataFile, sessionHours, sessionCookieName, sessionCookieSecure, allowedOrigins,
+    microsoft, adminContactEmail, bootstrapAdminEmail, schoolEmailDomain,
+  } = config;
   const store = new JsonStore(dataFile);
   const app = new Hono();
   const logAction = createActionLog(options.actionLogger || ((message) => console.log(message)));
-  const auth = createAuth({ store, sessionHours, sendError });
+  const auth = createAuth({ store, sessionHours, cookieName: sessionCookieName, secureCookie: sessionCookieSecure, sendError });
   const microsoftAuth = createMicrosoftAuth({ config: microsoft, client: options.microsoftClient });
   const domain = createDomain(store);
-  const realtime = createRealtime({ store, userForToken: auth.userForToken, approvedCount: domain.approvedCount });
+  const realtime = createRealtime({ store, authenticateCookieHeader: auth.authenticateCookieHeader, userForTokenHash: auth.userForTokenHash, approvedCount: domain.approvedCount });
   let serverInstance;
 
   function isOriginAllowed(origin) { return !origin || allowedOrigins.has("*") || allowedOrigins.has(origin); }
@@ -31,8 +34,9 @@ export function createBackend(options = {}) {
     const origin = c.req.header("Origin");
     if (!isOriginAllowed(origin)) return sendError(c, 403, "ORIGIN_NOT_ALLOWED", "This frontend origin is not allowed.");
     if (origin) c.header("Access-Control-Allow-Origin", origin);
+    if (origin) c.header("Access-Control-Allow-Credentials", "true");
     c.header("Vary", "Origin");
-    c.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    c.header("Access-Control-Allow-Headers", "Content-Type");
     c.header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
     if (c.req.method === "OPTIONS") return c.body(null, 204);
     await next();
@@ -67,6 +71,7 @@ export function createBackend(options = {}) {
   }
 
   function stop() {
+    auth.stop();
     realtime.stop();
     if (!serverInstance) return Promise.resolve();
     return new Promise((resolve, reject) => {

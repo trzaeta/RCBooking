@@ -11,6 +11,7 @@ export function makeSeedData() {
     ],
     congresses: [],
     bookings: [],
+    sessions: [],
   };
 }
 
@@ -24,6 +25,7 @@ export class JsonStore {
       this.data = makeSeedData();
       this.save();
     }
+    if (!Array.isArray(this.data.sessions)) this.data.sessions = [];
   }
 
   save() {
