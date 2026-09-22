@@ -1,0 +1,206 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  min-width: 900px;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Header ---------- */
+
+.header {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: clamp(12px, 2vw, 24px) clamp(72px, 12vw, 180px) 0;
+}
+
+.pageTitle {
+  font-size: clamp(28px, 4vw, 60px);
+  margin: 0;
+  padding-top: 10px;
+}
+
+.headerRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.version {
+  margin: 0;
+  font-size: 16px;
+  font-style: italic;
+}
+
+.logoutBtn {
+  width: auto !important;
+  min-width: 140px;
+  margin: 0 !important;
+  padding: 10px 20px !important;
+  font-size: 16px !important;
+}
+
+/* ---------- Body layout ---------- */
+
+.body {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  padding: clamp(20px, 3vw, 40px) clamp(72px, 12vw, 180px) 60px;
+}
+
+/* ---------- Panel: one backdrop behind the sidebar AND the main window ---------- */
+
+.panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: clamp(320px, 32vw, 440px);
+  padding-left: clamp(28px, 4vw, 50px);
+  background-color: #b4e5a2;
+  border-radius: 50px;
+  outline: 2px solid black;
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 0 clamp(220px, 22vw, 340px);
+}
+
+button.option {
+  font-family: inherit;
+  font-size: clamp(16px, 1.3vw, 24px);
+  padding: 20px;
+  background-color: #d9f2d0;
+  border-radius: 10px;
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  transition: outline 0.1s ease;
+}
+
+button.option:hover:not(:disabled) {
+  outline: 2px solid black;
+}
+
+button.option.selected {
+  background-color: #8ed973;
+}
+
+button.option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mainWindow {
+  box-sizing: border-box;
+  white-space: pre-line;
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+  padding: clamp(16px, 2.5vw, 32px);
+  background-color: #8ed973;
+  border-radius: 40px;
+  text-align: center;
+  outline: 2px solid black;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.mainWindowText {
+  margin: 0;
+  font-size: 20px;
+  white-space: pre-line;
+}
+
+.loginBtn {
+  width: auto !important;
+  align-self: center;
+  margin: auto !important;
+  padding: 22px 36px !important;
+  font-size: clamp(18px, 1.6vw, 26px) !important;
+}
+
+.fieldsRow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+input.rcInput {
+  font-size: 15px;
+  font-family: inherit;
+  border-radius: 5px;
+  border: 1px solid #666;
+  padding: 8px 10px;
+  height: 45px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+input.rcInputDate {
+  flex: 0 1 170px;
+}
+
+.Confirm {
+  font-family: inherit;
+  font-size: 15px;
+  border-radius: 5px;
+  background-color: #d9f2d0;
+  outline: none;
+  border: none;
+  padding: 0 24px;
+  height: 45px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.Confirm:hover {
+  outline: 2px solid black;
+}
+
+table.rcTable {
+  border-collapse: collapse;
+  margin: 0 auto;
+  background-color: transparent;
+  width: 100%;
+  max-width: 640px;
+  font-size: clamp(15px, 1.2vw, 19px);
+}
+
+th,
+td {
+  border: 1px solid #444444;
+  padding: 6px 20px 6px 10px;
+  text-align: left;
+  background-color: transparent;
+}
