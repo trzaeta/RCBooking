@@ -39,7 +39,7 @@ function RequestBookingForm() {
         <input
           type="text"
           className="rcInput"
-          placeholder="Teacher's name, as seen on Teams"
+          placeholder="Teacher's name"
         />
         <input type="date" className="rcInput rcInputDate" />
         <button className="Confirm">Confirm</button>
@@ -99,7 +99,6 @@ function MainWindowContent({ selected }) {
 }
 
 export default function App() {
-  // Login state is a plain boolean for now - no real auth is wired up yet.
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [selected, setSelected] = useState("rb");
 
